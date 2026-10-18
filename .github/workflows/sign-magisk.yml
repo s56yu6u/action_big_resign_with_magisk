@@ -96,7 +96,18 @@ jobs:
         cd ..
         cd ../work
         ./sign_avb.sh ${{ github.event.inputs.PART_NAME }} ../boot/boot.img ../boot/patched.img ${{ github.event.inputs.PART_SIZE }}
-        cp ../boot/patched.img ../image.img
+        cd ../boot
+        mkdir -p verify-signed
+        cp patched.img verify-signed/
+        cd verify-signed
+        ../../magiskboot unpack patched.img || { echo "ERROR: cannot unpack signed image"; exit 1; }
+        test -s ramdisk.cpio || { echo "ERROR: signed image has no ramdisk"; exit 1; }
+        ../../magiskboot cpio ramdisk.cpio "extract overlay.d/sbin/magisk.xz signed-magisk.xz" || exit 1
+        test -s signed-magisk.xz || { echo "ERROR: signed image has no Magisk payload"; exit 1; }
+        cmp ../magisk.xz signed-magisk.xz || { echo "ERROR: signed payload differs"; exit 1; }
+        echo "PASS: signed image contains identical Magisk payload"
+        cd ../..
+        cp ./boot/patched.img ./image.img
 
     - name: Upload to Release
       uses: softprops/action-gh-release@v3
