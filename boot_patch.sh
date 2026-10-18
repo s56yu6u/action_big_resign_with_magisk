@@ -99,7 +99,12 @@ echo "PREINITDEVICE=$PREINITDEVICE" >> config
 [ ! -z $SHA1 ] && echo "SHA1=$SHA1" >> config
 
 # Compress to save precious ramdisk space
-../magiskboot compress=xz zzz/lib/$cpu_abi/libmagisk.so magisk.xz
+# 不使用 magiskboot 自动选择的 --arm64 XZ 过滤器
+xz --format=xz --check=crc32 --lzma2=dict=8MiB \
+  -c "zzz/lib/$cpu_abi/libmagisk.so" > magisk.xz || exit 1
+test -s magisk.xz || exit 1
+xz -t magisk.xz || exit 1
+xz --list -vv magisk.xz
 ../magiskboot compress=xz zzz/assets/stub.apk stub.xz
 ../magiskboot compress=xz zzz/lib/$cpu_abi/libinit-ld.so init-ld.xz
 
