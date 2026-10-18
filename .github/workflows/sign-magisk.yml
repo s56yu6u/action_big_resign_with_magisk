@@ -82,6 +82,18 @@ jobs:
         test -s zzz/lib/arm64-v8a/libmagisk.so || { echo "ERROR: libmagisk.so missing or empty"; exit 1; }
         test -s magisk.xz || { echo "ERROR: magisk.xz missing or empty"; exit 1; }
         xz -t magisk.xz || { echo "ERROR: magisk.xz is invalid"; exit 1; }
+                # 从重新打包的镜像中取回载荷，与打包前的文件逐字节比较
+        mkdir -p verify-image
+        cp patched.img verify-image/
+        cd verify-image
+        ../../magiskboot unpack patched.img
+        test -s ramdisk.cpio || { echo "ERROR: packed image has no ramdisk"; exit 1; }
+        ../../magiskboot cpio ramdisk.cpio "extract overlay.d/sbin/magisk.xz extracted-magisk.xz"
+        test -s extracted-magisk.xz || { echo "ERROR: magisk.xz missing from packed ramdisk"; exit 1; }
+        xz -t extracted-magisk.xz || { echo "ERROR: packed magisk.xz is invalid"; exit 1; }
+        cmp ../magisk.xz extracted-magisk.xz || { echo "ERROR: packed payload differs"; exit 1; }
+        echo "PASS: packed image contains identical Magisk payload"
+        cd ..
         cd ../work
         ./sign_avb.sh ${{ github.event.inputs.PART_NAME }} ../boot/boot.img ../boot/patched.img ${{ github.event.inputs.PART_SIZE }}
         cp ../boot/patched.img ../image.img
